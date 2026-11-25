@@ -1,0 +1,39 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2606                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "constant";
+    object      dynamicMeshDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+// The WHOLE mesh (cylindrical atmosphere + rotor) rotates as one solid body.
+// No AMI, no sliding interface, rotor fixed relative to the mesh.
+// Exact for URANS and LES (ddtCorr stays active, unlike a whole-domain MRF).
+// The domain is a cylinder about the axis, so the outer boundaries sweep no
+// volume and the inlet/outlet/farfield BCs stay in the absolute frame.
+
+dynamicFvMesh   dynamicMotionSolverFvMesh;
+
+motionSolverLibs (fvMotionSolvers);
+
+motionSolver    solidBody;
+
+cellZone        rotatingFrame;      // = all cells (system/topoSetDict)
+
+solidBodyMotionFunction  rotatingMotion;
+
+origin      (0 0 0);
+axis        (0 1 0);
+omega       -167.55;    // rad/s  (-1600 rpm)
+
+
+// ************************************************************************* //

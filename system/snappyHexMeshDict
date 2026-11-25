@@ -1,0 +1,150 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2606                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      snappyHexMeshDict;
+}
+
+castellatedMesh true;
+snap            true;
+addLayers       false;
+
+geometry
+{
+    innerCylinder.obj
+    {
+        type        triSurfaceMesh;
+        name        innerCylinder;
+        regions { ascii { name innerCylinder; } }
+    }
+    innerCylinderSmall.obj
+    {
+        type        triSurfaceMesh;
+        name        innerCylinderSmall;
+        regions { ascii { name innerCylinderSmall; } }
+    }
+    // Near-field refinement boxes (replace the old outer cylinder)
+    nearField1
+    {
+        type        searchableBox;
+        min         (-0.6 -1.8 -0.6);
+        max         ( 0.6  0.6  0.6);
+    }
+    nearField2
+    {
+        type        searchableBox;
+        min         (-0.3 -1.0 -0.3);
+        max         ( 0.3  0.25 0.3);
+    }
+    rotor_shift.stl
+    {
+        type        triSurfaceMesh;
+        name        propeller;
+        regions { zone0 { name propeller; } }
+    }
+}
+
+castellatedMeshControls
+{
+    maxLocalCells       2000000;
+    maxGlobalCells      4000000;
+    minRefinementCells  0;
+    maxLoadUnbalance    0.10;
+    nCellsBetweenLevels 2;
+
+    features
+    (
+        { file "rotor_shift.eMesh";        level 6; }
+    );
+
+    refinementSurfaces
+    {
+        // innerCylinderSmall is no longer a surface (no AMI baffle / cellZone);
+        // it is kept below only as a refinement region (same 3.1 mm cells).
+        propeller
+        {
+            level       (5 6);
+            patchInfo { type wall; }
+        }
+    }
+
+    resolveFeatureAngle 30;
+
+    refinementRegions
+    {
+        nearField1         { mode inside; levels ((1E15 1)); }   // 50 mm
+        nearField2         { mode inside; levels ((1E15 2)); }   // 25 mm
+        innerCylinder      { mode inside; levels ((1E15 4)); }   // 6.25 mm wake
+        innerCylinderSmall { mode inside; levels ((1E15 5)); }   // 3.1 mm around rotor
+    }
+
+    locationInMesh (0.01 -0.5 0.01);
+    allowFreeStandingZoneFaces false;
+}
+
+snapControls
+{
+    nSmoothPatch            3;
+    tolerance               4.0;
+    nSolveIter              300;
+    nRelaxIter              5;
+    nFeatureSnapIter        10;
+    implicitFeatureSnap     true;
+    explicitFeatureSnap     false;
+    multiRegionFeatureSnap  true;
+}
+
+addLayersControls
+{
+    relativeSizes               true;
+    layers                      {}
+    expansionRatio              1.0;
+    finalLayerThickness         0.3;
+    minThickness                0.1;
+    nGrow                       0;
+    featureAngle                30;
+    nRelaxIter                  3;
+    nSmoothSurfaceNormals       1;
+    nSmoothNormals              3;
+    nSmoothThickness            10;
+    maxFaceThicknessRatio       0.5;
+    maxThicknessToMedialRatio   0.3;
+    minMedialAxisAngle          90;
+    nBufferCellsNoExtrude       0;
+    nLayerIter                  50;
+}
+
+meshQualityControls
+{
+    maxNonOrtho             65;
+    maxBoundarySkewness     4;
+    maxInternalSkewness     4;
+    maxConcave              80;
+    minVol                  1e-13;
+    minTetQuality           -1;
+    minArea                 -1;
+    minTwist                0.01;
+    minDeterminant          0.001;
+    minFaceWeight           0.05;
+    minVolRatio             0.01;
+    minTriangleTwist        -1;
+    nSmoothScale            4;
+    errorReduction          0.75;
+    relaxed
+    {
+        maxNonOrtho 75;
+    }
+}
+
+mergeTolerance 1e-6;
+
+
+// ************************************************************************* //

@@ -1,0 +1,128 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2606                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      blockMeshDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+scale   1;
+
+// Cylindrical free-air ("atmosphere") domain, axis = y (rotor axis).
+// Rotor diameter D = 0.218 m, rotor at origin, flow in -y.
+//   radius     R = 10 D  = 2.2 m
+//   upstream       5 D  -> yMax = +1.1 m   (inlet)
+//   downstream    15 D  -> yMin = -3.3 m   (outlet)
+// O-grid: square core (half-width a) + 4 curved outer blocks.
+// The cylinder is a surface of revolution about the rotation axis, so the
+// rotating-frame flux through every boundary face is the same as the
+// absolute flux -> inlet/outlet/farfield are exact in the rotating frame.
+
+R     2.2;
+a     1.0;            // core half-width (contains all snappy refinement boxes)
+c     1.5556349;      // R/sqrt(2)
+yMin -3.3;
+yMax  1.1;
+
+mR   -2.2;
+ma   -1.0;
+mc   -1.5556349;
+
+N     20;             // cells across core side   (0.1 m)
+Nr    10;             // radial cells, core -> R  (~0.1 m)
+Ny    44;             // axial cells              (0.1 m)
+
+vertices
+(
+    // y = yMin (outlet)
+    ($ma $yMin $ma)     // 0  core
+    ($a  $yMin $ma)     // 1
+    ($a  $yMin $a )     // 2
+    ($ma $yMin $a )     // 3
+    ($mc $yMin $mc)     // 4  outer, 225 deg
+    ($c  $yMin $mc)     // 5  315 deg
+    ($c  $yMin $c )     // 6   45 deg
+    ($mc $yMin $c )     // 7  135 deg
+
+    // y = yMax (inlet)
+    ($ma $yMax $ma)     // 8
+    ($a  $yMax $ma)     // 9
+    ($a  $yMax $a )     // 10
+    ($ma $yMax $a )     // 11
+    ($mc $yMax $mc)     // 12
+    ($c  $yMax $mc)     // 13
+    ($c  $yMax $c )     // 14
+    ($mc $yMax $c )     // 15
+);
+
+blocks
+(
+    hex (0 3 2 1  8 11 10  9) ($N $N  $Ny) simpleGrading (1 1 1)   // core
+    hex (0 1 5 4  8  9 13 12) ($N $Nr $Ny) simpleGrading (1 1 1)   // -z
+    hex (1 2 6 5  9 10 14 13) ($N $Nr $Ny) simpleGrading (1 1 1)   // +x
+    hex (2 3 7 6 10 11 15 14) ($N $Nr $Ny) simpleGrading (1 1 1)   // +z
+    hex (3 0 4 7 11  8 12 15) ($N $Nr $Ny) simpleGrading (1 1 1)   // -x
+);
+
+edges
+(
+    arc  4  5 (0    $yMin $mR)
+    arc  5  6 ($R   $yMin 0  )
+    arc  6  7 (0    $yMin $R )
+    arc  7  4 ($mR  $yMin 0  )
+
+    arc 12 13 (0    $yMax $mR)
+    arc 13 14 ($R   $yMax 0  )
+    arc 14 15 (0    $yMax $R )
+    arc 15 12 ($mR  $yMax 0  )
+);
+
+boundary
+(
+    inlet
+    {
+        type patch;
+        faces
+        (
+            ( 8 11 10  9)
+            ( 8  9 13 12)
+            ( 9 10 14 13)
+            (10 11 15 14)
+            (11  8 12 15)
+        );
+    }
+    outlet
+    {
+        type patch;
+        faces
+        (
+            (0 1 2 3)
+            (0 4 5 1)
+            (1 5 6 2)
+            (2 6 7 3)
+            (3 7 4 0)
+        );
+    }
+    farfield
+    {
+        type patch;
+        faces
+        (
+            (4 12 13 5)
+            (5 13 14 6)
+            (6 14 15 7)
+            (7 15 12 4)
+        );
+    }
+);
+
+
+// ************************************************************************* //

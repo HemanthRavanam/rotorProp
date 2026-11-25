@@ -1,0 +1,21 @@
+0.*
+log.*
+plotResiduals.py
+viewRotor.py
+viewRotorFrame.py
+rotorProp.foam
+processor*
+backup_*
+postProcessing/
+
+!0.orig
+!constant
+!system
+!All*
+
+
+
+
+
+# vs code
+.vscode/

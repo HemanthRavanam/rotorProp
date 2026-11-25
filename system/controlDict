@@ -1,0 +1,167 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  2606                                  |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+FoamFile
+{
+    version         2;
+    format          ascii;
+    class           dictionary;
+    object          controlDict;
+}
+
+application     pimpleFoam;
+
+startFrom       startTime;
+
+startTime       0;
+
+stopAt          endTime;
+
+endTime         0.0375;
+
+deltaT          1e-05;
+adjustTimeStep  yes;
+maxCo           0.8;            
+maxDeltaT       4e-05;          
+
+writeControl    adjustable;
+
+writeInterval   0.001;
+
+purgeWrite      0;
+
+writeFormat     binary;
+
+writePrecision  6;
+
+writeCompression off;
+
+timeFormat      general;
+
+timePrecision   6;
+
+runTimeModifiable true;
+
+functions
+{
+    Q
+    {
+        type            Q;
+        libs            ( fieldFunctionObjects );
+        field           U;
+        executeControl  writeTime;
+        writeControl    writeTime;
+    }
+    surfaces
+    {
+        type            surfaces;
+        libs            ( sampling );
+        writeControl    writeTime;
+        surfaceFormat   vtk;
+        fields          ( p U Q );
+        surfaces
+        {
+            zNormal
+            {
+                type            cuttingPlane;
+                point           ( 0 0 0 );
+                normal          ( 0 0 1 );
+                interpolate     true;
+            }
+            // Q-criterion isosurfaces, scaled by omega^2 = 167.55^2 ~ 2.8e4 1/s^2
+            // low  (~0.2 omega^2): full helical wake, may show some sheet/noise
+            // mid  (~0.7 omega^2): clean tip + root vortices (start here)
+            // high (~1.8 omega^2): only the strongest vortex cores
+            isoQ_5k
+            {
+                type            isoSurface;
+                isoField        Q;
+                isoValue        5000;
+                interpolate     true;
+            }
+            isoQ_20k
+            {
+                type            isoSurface;
+                isoField        Q;
+                isoValue        20000;
+                interpolate     true;
+            }
+            isoQ_50k
+            {
+                type            isoSurface;
+                isoField        Q;
+                isoValue        50000;
+                interpolate     true;
+            }
+            propeller
+            {
+                type            patch;
+                patches         ( "propeller.*" );
+                interpolate     true;
+                surfaceFormat   ensight;
+            }
+        }
+    }
+    forces
+    {
+        type            forces;
+        libs            ( forces );
+        writeControl    timeStep;
+        writeInterval   1;
+        patches         ( "propeller.*" );
+        rho             rhoInf;
+        log             true;
+        rhoInf          1;
+        CofR            ( 0 0 0 );
+        pitchAxis       ( 0 1 0 );
+    }
+    propellerInfo1
+    {
+        type            propellerInfo;
+        libs            ( forces );
+        writeControl    writeTime;
+        patches         ( "propeller.*" );
+        URef            2;              // free-stream speed |Uinf| for J, Kt, Kq
+        rho             rhoInf;
+        rhoInf          1;
+        writePropellerPerformance yes;
+        radius          0.109;
+        rotationMode    specified;
+        origin          ( 0 -0.1 0 );
+        axis            ( 0 1 0 );
+        n               26.67;
+        writeWakeFields yes;
+        sampleDisk
+        {
+            r1              0.05;
+            r2              0.2;
+            nTheta          36;
+            nRadial         10;
+            interpolationScheme cellPoint;
+            surfaceWriter   vtk;
+        }
+    }
+    residuals
+    {
+        type            solverInfo;
+        libs            ( utilityFunctionObjects );
+        fields          ( U p k omega );
+        writeResidualFields no;
+    }
+    relative
+    {
+        type            relativeVelocity;
+        libs            ( fieldFunctionObjects );
+        executeControl  writeTime;
+        writeControl    writeTime;
+        rotationMode    solidBodyRotation;  // rotation read from dynamicMeshDict
+    }
+}
+
+
+// ************************************************************************* //
